@@ -1,4 +1,3 @@
-#test
 #!/usr/bin/perl
 ##Purpose of this is to automatically move all vm's to another node so that this one can reboot
 use Data::Dumper;
