@@ -32,8 +32,11 @@ sub CheckDisk()
 		{
 			if(/local/)
 			{
-				print "$vmlist{$x}{vmid},$vmlist{$x}{hostname} has a local disk\n";
-				print "Match $_\n";
+				#ide0: local:210/vm-210-disk-2.qcow2
+				@tmp = split('\/', $_);
+				print "VMID -> $vmlist{$x}{vmid}\nHostname -> $vmlist{$x}{hostname}\nhas a local disk "
+					. "and has been removed from migration\n";
+				print "Match $tmp[1]\n";
 				delete($vmlist{$x});
 			}
 		&migrate;			
@@ -44,4 +47,4 @@ sub migrate()
 {
 	#Do Stuff
 }
-print Dumper %vmlist;
+#print Dumper %vmlist;
