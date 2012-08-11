@@ -64,19 +64,17 @@ sub migrate()
 	{
 		if(defined($vmlist{$x}{hostname}))
 		{
-#This if tests only my stuff
-#			if ($vmlist{$x}{vmid} eq "201" || $vmlist{$x}{vmid} eq "203" || $vmlist{$x}{vmid} eq "209")
-			if ($vmlist{$x}{vmid} eq "209")
-			{
-				chomp(@migrate = `ssh $src_mig qm migrate $vmlist{$x}{vmid} $dst_mig --online`);
-				print LOGFILE "$date -> $x -> $vmlist{$x}{vmid}, $vmlist{$x}{hostname} $src_mig -> $dst_mig\n";
-				print "Migrated $vmlist{$x}{vmid} from $src_mig -> $dst_mig\n";
-				&stats(@migrate)
-			}
+                        $size = @migrate; 
+                        print "Array $size\n";
+			chomp(@migrate = `ssh $src_mig qm migrate $vmlist{$x}{vmid} $dst_mig --online`);
+			print LOGFILE "$date -> $x -> $vmlist{$x}{vmid}, $vmlist{$x}{hostname} $src_mig -> $dst_mig\n";
+			print "Migrated $vmlist{$x}{vmid} from $src_mig -> $dst_mig\n";
+#			&stats(@migrate)
+			#$size = @migrate;
+			#print "Array $size\n";
 		}
 	}
 }
-#print Dumper %vmlist;
 sub stats()
 {
 	for($x=0; $x<@migrate; $x++)
@@ -104,6 +102,9 @@ sub stats()
 			@tmp = ();
 		}
 	}
+	$size2 = @migrate;
+	print "After Stats sub run $size2\n";
+	undef @migrate;
 	print LOGFILE "Debugging Stats\n$date -> Migration $status at a rate of $speed in $finished\n";
 }#end stats
 if(defined($ARGV[2]))
