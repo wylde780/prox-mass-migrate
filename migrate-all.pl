@@ -4,13 +4,11 @@ use Data::Dumper;
 chomp($src_mig = $ARGV[0]);
 chomp($dst_mig = $ARGV[1]);
 $logfile = 'migrate-all.log';
-chomp($date = `date +"%b %d %T"`);
 if($ARGV[2] =~ m/\-d/ )
 {
 	open LOGFILE, ">>$logfile" or die "Can't open $logfile\n";
 	print LOGFILE "$date -> Starting to migrate\n";
 }	
-#@src_node = `pvesh get /nodes/$ARGV[0] 2>&1`; 
 chomp(@src_vms = `ssh $ARGV[0] qm list | grep running`);
 chomp(@storage = `pvesh get /storage 2>&1 | grep storage`);
 for($x=0; $x<@storage; $x++)
@@ -20,7 +18,6 @@ for($x=0; $x<@storage; $x++)
 		splice @storage, $x, 1;
 	}	
 }
-#print @storage;
 %vmlist =();
 $count = 0;
 foreach(@src_vms)
@@ -39,6 +36,7 @@ foreach(@src_vms)
 &CheckDisk;
 sub CheckDisk()
 {
+	chomp($date = `date +'%b %d %T'`);
 	for ($x = 0; $x<scalar(keys %vmlist); $x++)
 	{
 		$conf = "/etc/pve/qemu-server/$vmlist{$x}{vmid}.conf";
@@ -48,8 +46,9 @@ sub CheckDisk()
 			if(/local:/)
 			{
 				chomp(@tmp = split('\/', $_));
-				print LOGFILE "$date -> ***VMID -> $vmlist{$x}{vmid}\nHostname -> $vmlist{$x}{hostname} "
-					. "Disk -> $tmp[1] has a local disk and has been removed from the migration list***\n";
+				print LOGFILE "$date -> *** $vmlist{$x}{vmid} "
+					. "has a local disk ($tmp[1]) and has been removed from the migration list ***\n";
+				print "$vmlist{$x}{vmid} has been excluded due to having a local disk\n";
 				delete($vmlist{$x});
 			}
 		}
@@ -58,52 +57,49 @@ sub CheckDisk()
 }#End CheckDisk 
 sub migrate()
 {
-	#Do Stuff
+	chomp($date = `date +'%b %d %T'`);
+	print LOGFILE "Debugging Stats\n";
 	for ($x = 0; $x<scalar(keys %vmlist); $x++)
 	{
 		if(defined($vmlist{$x}{hostname}))
 		{
-#This if tests only my stuff
-			if ($vmlist{$x}{vmid} eq "201" || $vmlist{$x}{vmid} eq "203" || $vmlist{$x}{vmid} eq "209")
-#			if ($vmlist{$x}{vmid} eq "209")
-			{
-				chomp(@migrate = `ssh $src_mig qm migrate $vmlist{$x}{vmid} $dst_mig --online`);
-				print "$date -> $x -> $vmlist{$x}{vmid}, $vmlist{$x}{hostname} $src_mig -> $dst_mig\n";
-				&stats(@migrate)
-			}
+			chomp(@migrate = `ssh $src_mig qm migrate $vmlist{$x}{vmid} $dst_mig --online`);
+			print LOGFILE "$date -> $vmlist{$x}{vmid}, $vmlist{$x}{hostname} from $src_mig to $dst_mig\n";
+			print "Migrated $vmlist{$x}{vmid} from $src_mig -> $dst_mig\n";
+			&stats(@migrate);
 		}
 	}
 }
-#print Dumper %vmlist;
 sub stats()
 {
-	for($x=0; $x<@migrate; $x++)
+	chomp($date = `date +'%b %d %T'`);
+	foreach(@migrate)
 	{
-		if($migrate[$x] =~ m/status/)
+		if(/status/)
 		{
-			chomp($status = $migrate[$x]);
+			chomp($status = $_);
 			@tmp = split(/ /, $status);
 			$status = $tmp[-1];
 			@tmp = ();
 		}
-		if($migrate[$x] =~ m/speed/)
+		if(/speed/)
 		{
-			chomp($speed = $migrate[$x]);
+			chomp($speed = $_);
 			@tmp = split(/ /, $speed);
 			$speed = "$tmp[-2]$tmp[-1]";
 			@tmp = ();
 		}
-		if($migrate[$x] =~ m/finished/)
+		if(/finished/)
 		{
-			#Aug 10 02:36:14 migration finished successfuly duration 00:00:08
-			chomp($finished = $migrate[$x]);
+			chomp($finished = $_);
 			$finished =~ s/(\)|\()//g;
 			@tmp = split(/ /, $finished);
 			$finished = $tmp[-1];
 			@tmp = ();
 		}
 	}
-	print LOGFILE "$date -> Debugging Stats\nMigration $status at a rate of $speed in $finished\n";
+	undef @migrate;
+	print LOGFILE "$date Migration $status at a rate of $speed in $finished\n";
 }#end stats
 if(defined($ARGV[2]))
 { 
